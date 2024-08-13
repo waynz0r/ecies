@@ -1,11 +1,14 @@
 package ecies
 
 import (
+	"crypto/elliptic"
 	"fmt"
 )
 
 func example1() {
-	k, err := GenerateKey()
+	curve := elliptic.P256()
+
+	k, err := GenerateKey(curve)
 	if err != nil {
 		panic("failed to generate key pair")
 	}
@@ -17,8 +20,8 @@ func example1() {
 	fmt.Println("privateKey=" + serializedPrivateKey)
 	fmt.Println("publicKey=" + serializedPublicKey)
 
-	deserializedPrivateKey := DeserializePrivateKey(HexDecodeWithoutError(serializedPrivateKey))
-	deserializedPublicKey, err := DeserializePublicKey(HexDecodeWithoutError(serializedPublicKey))
+	deserializedPrivateKey := DeserializePrivateKey(k.Curve, HexDecodeWithoutError(serializedPrivateKey))
+	deserializedPublicKey, err := DeserializePublicKey(k.Curve, HexDecodeWithoutError(serializedPublicKey))
 	if err != nil {
 		panic("failed to deserialize key pair")
 	}
@@ -26,7 +29,7 @@ func example1() {
 	fmt.Println(deserializedPublicKey.X.Cmp(publicKey.X) == 0)
 	fmt.Println(deserializedPublicKey.Y.Cmp(publicKey.Y) == 0)
 
-	ecies := NewECIES()
+	ecies := NewECIES(curve)
 	plainText := "hello world"
 	encryptedTextBytes, err := ecies.Encrypt(publicKey, []byte(plainText))
 	if err != nil {
@@ -37,5 +40,4 @@ func example1() {
 		panic("failed to decrypt message")
 	}
 	fmt.Println(string(decryptedTextBytes))
-
 }

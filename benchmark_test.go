@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Benchmark_P256_Message128_Encryption(b *testing.B) {
@@ -242,26 +243,23 @@ func benchmarkEncryption(b *testing.B, curve elliptic.Curve, l int) {
 	b.StopTimer()
 	message := generateMessage(b, l)
 
-	SetCurve(curve)
-	k, err := GenerateKey()
+	k, err := GenerateKey(curve)
 	assert.Nil(b, err)
-	ecies := NewECIES()
+	ecies := NewECIES(curve)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
 		ecies.Encrypt(k.PublicKey, message)
 	}
-	ClearCurve()
 }
 
 func benchmarkDecryption(b *testing.B, curve elliptic.Curve, l int) {
 	b.StopTimer()
 	message := generateMessage(b, l)
 
-	SetCurve(curve)
-	k, err := GenerateKey()
+	k, err := GenerateKey(curve)
 	assert.Nil(b, err)
-	ecies := NewECIES()
+	ecies := NewECIES(curve)
 	encMessage, err := ecies.Encrypt(k.PublicKey, message)
 	assert.Nil(b, err)
 	b.StartTimer()
@@ -269,7 +267,6 @@ func benchmarkDecryption(b *testing.B, curve elliptic.Curve, l int) {
 	for i := 0; i < b.N; i++ {
 		ecies.Decrypt(k, encMessage)
 	}
-	ClearCurve()
 }
 
 func generateMessage(b *testing.B, len int) []byte {

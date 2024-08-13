@@ -1,17 +1,19 @@
 package ecies
 
 import (
-	"github.com/stretchr/testify/assert"
+	"crypto/elliptic"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKeyPair(t *testing.T) {
-
 }
 
 func TestGenerateKey(t *testing.T) {
+	curve := elliptic.P256()
 	{
-		privateKey, err := GenerateKey()
+		privateKey, err := GenerateKey(curve)
 		assert.Nil(t, err)
 		assert.NotNil(t, privateKey)
 		assert.NotNil(t, privateKey.PublicKey)
@@ -22,7 +24,7 @@ func TestGenerateKey(t *testing.T) {
 		assert.Equal(t, curve, privateKey.Curve)
 	}
 	{
-		k, _ := GenerateKey()
+		k, _ := GenerateKey(curve)
 		privateKeyString := HexEncode(SerializePrivateKey(k))
 		publicKeyString := HexEncode(SerializePublicKey(k.PublicKey))
 		assert.NotNil(t, publicKeyString)
@@ -31,12 +33,13 @@ func TestGenerateKey(t *testing.T) {
 }
 
 func TestKeySerialization(t *testing.T) {
-	k, err := GenerateKey()
+	curve := elliptic.P256()
+	k, err := GenerateKey(curve)
 	assert.Nil(t, err)
 	{
 		publicKeyBytes := SerializePublicKey(k.PublicKey)
 		assert.NotNil(t, publicKeyBytes)
-		publicKey, err := DeserializePublicKey(publicKeyBytes)
+		publicKey, err := DeserializePublicKey(curve, publicKeyBytes)
 		assert.Nil(t, err)
 		assert.NotNil(t, publicKey)
 		assert.True(t, bytesEquals(k.X.Bytes(), publicKey.X.Bytes()))
@@ -46,7 +49,7 @@ func TestKeySerialization(t *testing.T) {
 		x, y := SerializePublicKeyToCoordinate(k.PublicKey)
 		assert.NotNil(t, x)
 		assert.NotNil(t, y)
-		publicKey, err := DeserializePublicKeyFromCoordinate(x, y)
+		publicKey, err := DeserializePublicKeyFromCoordinate(curve, x, y)
 		assert.Nil(t, err)
 		assert.NotNil(t, publicKey)
 		assert.True(t, bytesEquals(k.X.Bytes(), publicKey.X.Bytes()))
@@ -55,7 +58,7 @@ func TestKeySerialization(t *testing.T) {
 	{
 		privateKeyBytes := SerializePrivateKey(k)
 		assert.NotNil(t, privateKeyBytes)
-		privateKey := DeserializePrivateKey(privateKeyBytes)
+		privateKey := DeserializePrivateKey(curve, privateKeyBytes)
 		assert.Nil(t, err)
 		assert.NotNil(t, privateKey)
 		assert.True(t, bytesEquals(k.D.Bytes(), privateKey.D.Bytes()))

@@ -19,7 +19,7 @@ type PrivateKey struct {
 }
 
 // GenerateKey generate an ECC key pair
-func GenerateKey() (*PrivateKey, error) {
+func GenerateKey(curve elliptic.Curve) (*PrivateKey, error) {
 	d, x, y, err := elliptic.GenerateKey(curve, rand.Reader)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func SerializePrivateKey(privateKey *PrivateKey) []byte {
 }
 
 // DeserializePrivateKey Deserialize from the D bytes
-func DeserializePrivateKey(dBytes []byte) *PrivateKey {
+func DeserializePrivateKey(curve elliptic.Curve, dBytes []byte) *PrivateKey {
 	d := new(big.Int).SetBytes(dBytes)
 	x, y := curve.ScalarBaseMult(dBytes)
 	return &PrivateKey{
@@ -55,11 +55,11 @@ func DeserializePrivateKey(dBytes []byte) *PrivateKey {
 
 // SerializePublicKey Serialize the X,Y bytes of the public key
 func SerializePublicKey(publicKey *PublicKey) []byte {
-	return elliptic.Marshal(curve, publicKey.X, publicKey.Y)
+	return elliptic.Marshal(publicKey.Curve, publicKey.X, publicKey.Y)
 }
 
 // DeserializePublicKey Deserialize from the X,Y bytes
-func DeserializePublicKey(pointBytes []byte) (*PublicKey, error) {
+func DeserializePublicKey(curve elliptic.Curve, pointBytes []byte) (*PublicKey, error) {
 	x, y := elliptic.Unmarshal(curve, pointBytes)
 	if x == nil || y == nil {
 		return nil, fmt.Errorf("invalid public key")
@@ -72,7 +72,7 @@ func DeserializePublicKey(pointBytes []byte) (*PublicKey, error) {
 }
 
 // DeserializePublicKeyFromCoordinate Deserialize from the X,Y coordinate string
-func DeserializePublicKeyFromCoordinate(xCoordinate, yCoordinate string) (*PublicKey, error) {
+func DeserializePublicKeyFromCoordinate(curve elliptic.Curve, xCoordinate, yCoordinate string) (*PublicKey, error) {
 	x, ok := new(big.Int).SetString(xCoordinate, 10)
 	if !ok {
 		return nil, fmt.Errorf("invalid x coordinate")

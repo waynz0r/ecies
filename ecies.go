@@ -3,6 +3,7 @@ package ecies
 import (
 	"bytes"
 	"crypto"
+	"crypto/elliptic"
 	"fmt"
 )
 
@@ -23,13 +24,13 @@ type ECIES struct {
 }
 
 // NewECIES create an ECIES instance with default algorithms
-func NewECIES() *ECIES {
+func NewECIES(curve elliptic.Curve) *ECIES {
 	kdf2 := NewKeyDerivationFunction2(crypto.SHA256)
-	return NewCustomizedECIES(NewEcsvdpDhKeyAgreement(), NewAesCbcPkcs7Cipher(), kdf2, crypto.SHA256, 16, 16)
+	return NewCustomizedECIES(NewEcsvdpDhKeyAgreement(), NewAesCbcPkcs7Cipher(), kdf2, crypto.SHA256, 16, 16, GetECPointByteLength(curve))
 }
 
 // NewCustomizedECIES create an ECIES instance with customized algorithms
-func NewCustomizedECIES(ka KeyAgreement, cipher SymmetricCipher, kdf KeyDerivationFunction, hmacHash crypto.Hash, encKeyByteSize int, macKeyByteSize int) *ECIES {
+func NewCustomizedECIES(ka KeyAgreement, cipher SymmetricCipher, kdf KeyDerivationFunction, hmacHash crypto.Hash, encKeyByteSize int, macKeyByteSize int, ecPointByteSize int) *ECIES {
 	return &ECIES{
 		keyAgreement:          ka,
 		keyDerivationFunction: kdf,
@@ -37,12 +38,16 @@ func NewCustomizedECIES(ka KeyAgreement, cipher SymmetricCipher, kdf KeyDerivati
 		hmacHash:              hmacHash,
 		encKeyByteSize:        encKeyByteSize,
 		macKeyByteSize:        macKeyByteSize,
-		ecPointByteSize:       GetECPointByteLength(),
+		ecPointByteSize:       ecPointByteSize,
 	}
 }
 
 // Encrypt encrypts a passed message with a receiver public key, returns ciphertext or encryption error
 func (ecies *ECIES) Encrypt(pubkey *PublicKey, msg []byte) ([]byte, error) {
+	if pubkey == nil {
+		return nil, fmt.Errorf("invalid public key")
+	}
+
 	// Message cannot be empty
 	if msg == nil || len(msg) == 0 {
 		return nil, fmt.Errorf("invalid length of message")
@@ -50,7 +55,7 @@ func (ecies *ECIES) Encrypt(pubkey *PublicKey, msg []byte) ([]byte, error) {
 	var ct bytes.Buffer
 
 	// Generate ephemeral key
-	ephemeralPrivateKey, err := GenerateKey()
+	ephemeralPrivateKey, err := GenerateKey(pubkey.Curve)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +79,7 @@ func (ecies *ECIES) Encrypt(pubkey *PublicKey, msg []byte) ([]byte, error) {
 	encKey := derivedKeyBytes[:ecies.encKeyByteSize]
 	macKey := derivedKeyBytes[ecies.encKeyByteSize:kenLen]
 
-	//Generate enc message
+	// Generate enc message
 	encBytes, err := ecies.symmetricCipher.Encrypt(msg, encKey)
 	if err != nil {
 		return nil, err
@@ -91,13 +96,17 @@ func (ecies *ECIES) Encrypt(pubkey *PublicKey, msg []byte) ([]byte, error) {
 
 // Decrypt decrypts a passed message with a receiver private key, returns plaintext or decryption error
 func (ecies *ECIES) Decrypt(privateKey *PrivateKey, msg []byte) ([]byte, error) {
+	if privateKey == nil || privateKey.PublicKey == nil {
+		return nil, fmt.Errorf("invalid private key")
+	}
+
 	// Message cannot be less than length of public key +  mac, because the cipher msg length > 0
 	if len(msg) <= (ecies.ecPointByteSize + ecies.hmacHash.Size()) {
 		return nil, fmt.Errorf("invalid length of message")
 	}
 
 	// Parse ephemeral sender public key in no compression mode
-	ephemeralPublicKey, err := DeserializePublicKey(msg[:ecies.ecPointByteSize])
+	ephemeralPublicKey, err := DeserializePublicKey(privateKey.Curve, msg[:ecies.ecPointByteSize])
 	if err != nil {
 		return nil, err
 	}
