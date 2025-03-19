@@ -1,6 +1,6 @@
-module github.com/hotstar/ecies
+module github.com/waynz0r/ecies
 
-go 1.18
+go 1.22
 
 require github.com/stretchr/testify v1.8.1
 
